@@ -108,19 +108,30 @@ flowchart TB
     DASH --> ITEMS
     DASH --> HISTORY
     DASH --> SUMMARY
-
-    classDef user fill:#dbeafe,stroke:#4f83ff,color:#1e3a8a
-    classDef work fill:#fff0cc,stroke:#e89b24,color:#854d0e
-    classDef report fill:#dcfce7,stroke:#36a663,color:#166534
-    classDef reliable fill:#ffe4e6,stroke:#f43f5e,color:#9f1239
-    classDef security fill:#dbeafe,stroke:#4f83ff,color:#1e3a8a
-
-    class U,B user
-    class AUTH,JWT,PRINCIPAL,AZ,MEMBERS,USERS security
-    class API,OPS,COMMENTS,RULES,ITEMS,COMMENTDB work
-    class ACT,HISTORY,DASH,SUMMARY report
-    class IDEM,IDEMDB,OUTBOX,JOBS,WORKER,HANDLER reliable
 ```
+
+## Demo Credentials & User Roles
+
+The database is pre-seeded deterministically with 10 demo users across 4 teams.
+
+![Newtonite Ops Demo Credentials and User Roles](docs/demo-credentials.png)
+
+| Username | Role | Primary Team Access | Password |
+|---|---|---|---|
+| `admin_alice` | ADMIN | Core Infrastructure, Payment Services | `Password123!` |
+| `lead_bob` | LEAD | Core Infrastructure, Customer Support | `Password123!` |
+| `member_charlie` | MEMBER | Core Infrastructure | `Password123!` |
+| `viewer_diana` | VIEWER | Core Infrastructure | `Password123!` |
+| `lead_elena` | LEAD | Payment Services | `Password123!` |
+| `member_frank` | MEMBER | Payment Services | `Password123!` |
+| `lead_grace` | LEAD | Compliance & Risk | `Password123!` |
+| `member_harry` | MEMBER | Compliance & Risk | `Password123!` |
+| `viewer_iris` | VIEWER | Compliance & Risk | `Password123!` |
+| `member_jack` | MEMBER | Customer Support | `Password123!` |
+
+**Demo password for all listed users:** `Password123!`
+
+> **Security note:** These are demo credentials intended for local development and testing only. Do not use default demo passwords in production or expose a publicly deployed instance with these credentials.
 
 ## API Highlights
 
@@ -140,54 +151,203 @@ flowchart TB
 
 - JDK 21
 - Git
-- Docker with Docker Compose
+- Docker Desktop with Docker Compose
+- A terminal such as macOS Terminal or VS Code's integrated terminal
 
-### 1. Clone the Repository
+### 1. Install Java
+
+Install JDK 21 from [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21).
+
+Choose the correct download for your Mac:
+
+- **Apple Silicon Mac:** macOS ARM64
+- **Intel Mac:** macOS x64
+
+A VS Code Java extension alone is not enough; the JDK must be installed on your system.
+
+Verify the installation:
+
+```bash
+java -version
+javac -version
+```
+
+### 2. Install and Start Docker Desktop
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and open it. Wait until Docker is running.
+
+Verify Docker and Compose:
+
+```bash
+docker --version
+docker compose version
+```
+
+### 3. Clone the Repository
+
+If you have not downloaded the project yet, run:
 
 ```bash
 git clone https://github.com/prabhkalraa/newtonite-ops-23131180344.git
 cd newtonite-ops-23131180344
 ```
 
-### 2. Start PostgreSQL
+If the project is already on your Mac, navigate to its folder instead:
+
+```bash
+cd ~/Documents/newtonite-ops-23131180344
+```
+
+### 4. Start PostgreSQL
+
+From the project root directory, run:
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 3. Build the Project
+Check the database container:
+
+```bash
+docker compose ps
+```
+
+Wait until PostgreSQL reports a healthy status if a health check is configured.
+
+If the project requires environment variables, review `.env.example` and the application configuration before changing any settings.
+
+### 5. Make the Maven Wrapper Executable
+
+Run this command once if the terminal reports `permission denied` when executing `./mvnw`:
 
 ```bash
 chmod +x mvnw
+```
+
+### 6. Build the Project
+
+```bash
 ./mvnw clean package
 ```
 
-### 4. Run the Application
+Run the tests:
+
+```bash
+./mvnw test
+```
+
+### 7. Run the Application
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Open `http://localhost:8080` in your browser.
+Keep the terminal open while the application is running.
 
-### 5. Run Tests
+Wait for a log message similar to:
+
+```text
+Started NewtoniteOpsApplication
+```
+
+### 8. Open the Application
+
+Open the following URL in your browser:
+
+[http://localhost:8080](http://localhost:8080)
+
+Log in using one of the demo usernames listed in the Demo Credentials & User Roles section.
+
+Use the password:
+
+```text
+Password123!
+```
+
+### 9. Stop the Application
+
+In the terminal running Spring Boot, press:
+
+```text
+Control + C
+```
+
+To stop the PostgreSQL container when you are finished:
 
 ```bash
-./mvnw test
+docker compose stop postgres
 ```
+
+To use the project again later, start Docker Desktop, start PostgreSQL, and run the application again.
+
+## Troubleshooting
+
+### Port 8080 Is Already in Use
+
+Check which process is listening on port 8080:
+
+```bash
+lsof -nP -iTCP:8080 -sTCP:LISTEN
+```
+
+If the process is an older instance of your own application, stop it using its PID. Replace `10324` with the PID shown on your Mac:
+
+```bash
+kill 10324
+```
+
+Then restart the application:
+
+```bash
+./mvnw spring-boot:run
+```
+
+Do not stop an unfamiliar process without checking what it is.
+
+### PostgreSQL Connection Refused
+
+Check that Docker Desktop is running and the PostgreSQL container is healthy:
+
+```bash
+docker compose ps
+docker compose logs postgres
+```
+
+If necessary, start the database again:
+
+```bash
+docker compose up -d postgres
+```
+
+### Maven Wrapper Permission Denied
+
+Run:
+
+```bash
+chmod +x mvnw
+./mvnw spring-boot:run
+```
+
+### Java Version Problems
+
+Check the installed Java version:
+
+```bash
+java -version
+javac -version
+```
+
+The project prerequisites specify JDK 21. Install and select the appropriate JDK if your system is using a different version.
+
+### Application Starts but a Page Does Not Open
+
+Check the Spring Boot terminal for errors and confirm the application started successfully. If the root page opens but a particular API URL returns `404`, that endpoint may not exist at the requested path.
 
 ## Reliability and Security
 
 Newtonite Ops combines JWT authentication, team-level permission checks, database transactions, optimistic locking, and idempotency handling. Its transactional outbox separates event persistence from background processing, while activity records provide an audit trail of operational changes.
 
 Review `ENGINEERING_DECISIONS.md` and `KNOWN_LIMITATIONS.md` for additional architectural details and documented limitations.
-
-## Future Improvements
-
-- Expanded integration and concurrency testing
-- Enhanced dashboard reporting
-- Improved monitoring and observability
-- Deployment automation
 
 ---
 
