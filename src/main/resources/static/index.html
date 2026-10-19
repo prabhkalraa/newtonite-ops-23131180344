@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operations Under Pressure | Newtonite Enterprise Operations</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Screen A: Login View -->
+    <div id="login-view" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-badge">OPS UNDER PRESSURE</div>
+                <h1 class="login-title">Operations Console</h1>
+                <p class="login-subtitle">Internal mission-critical operations and incident workflow management</p>
+            </div>
+
+            <div id="login-error" class="alert alert-danger hidden" role="alert"></div>
+
+            <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" name="username" required autocomplete="username" placeholder="e.g. admin_alice">
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••••••">
+                        <button type="button" id="btn-toggle-password" class="btn-toggle-pw" title="Show/Hide Password" aria-label="Toggle password visibility">Show</button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-spinner hidden">Signing in...</span>
+                </button>
+            </form>
+
+            <div class="demo-credentials-box">
+                <div class="demo-cred-header">
+                    <strong>Demo Credentials</strong> (Password: <code>Password123!</code>)
+                </div>
+                <div class="demo-cred-grid">
+                    <button type="button" class="btn-cred-quickfill" data-user="admin_alice">
+                        <strong>admin_alice</strong> <span>Admin (Core Infra & Payment)</span>
+                    </button>
+                    <button type="button" class="btn-cred-quickfill" data-user="lead_bob">
+                        <strong>lead_bob</strong> <span>Lead (Core Infra & Support)</span>
+                    </button>
+                    <button type="button" class="btn-cred-quickfill" data-user="member_charlie">
+                        <strong>member_charlie</strong> <span>Member (Core Infra)</span>
+                    </button>
+                    <button type="button" class="btn-cred-quickfill" data-user="viewer_diana">
+                        <strong>viewer_diana</strong> <span>Viewer (Core Infra)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Layout (Hidden when not authenticated) -->
+    <div id="app-view" class="app-layout hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">NEWTONITE OPS</div>
+                <div class="sidebar-system-status">
+                    <span class="status-indicator online"></span> System Healthy
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button type="button" class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </button>
+                <button type="button" class="nav-item" data-view="items" data-preset="all">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">All Work Items</span>
+                </button>
+                <button type="button" class="nav-item" data-view="items" data-preset="assigned-to-me">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">Assigned to Me</span>
+                    <span id="badge-nav-assigned" class="nav-badge hidden">0</span>
+                </button>
+                <button type="button" class="nav-item" data-view="items" data-preset="unassigned-urgent">
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-label">Unassigned Urgent</span>
+                    <span id="badge-nav-urgent" class="nav-badge urgent hidden">0</span>
+                </button>
+                <button type="button" class="nav-item" data-view="items" data-preset="awaiting-approval">
+                    <span class="nav-icon">⏳</span>
+                    <span class="nav-label">Awaiting Approval</span>
+                    <span id="badge-nav-approval" class="nav-badge approval hidden">0</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="current-user-avatar">U</div>
+                    <div class="user-info">
+                        <div class="user-name" id="current-user-name">User</div>
+                        <div class="user-role" id="current-user-role">Role</div>
+                    </div>
+                </div>
+                <button type="button" id="btn-logout" class="btn btn-outline btn-sm btn-block" title="Sign Out">Sign Out</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top App Bar -->
+            <header class="top-bar">
+                <div class="top-bar-title">
+                    <h2 id="page-title">Dashboard</h2>
+                </div>
+                <div class="top-bar-actions">
+                    <div class="team-selector-wrapper">
+                        <label for="global-team-filter" class="sr-only">Filter by Team</label>
+                        <select id="global-team-filter" class="form-select select-sm">
+                            <option value="">All My Teams</option>
+                        </select>
+                    </div>
+                    <button type="button" id="btn-open-create-modal" class="btn btn-primary">
+                        + Create Work Item
+                    </button>
+                </div>
+            </header>
+
+            <!-- View: Dashboard -->
+            <section id="view-dashboard" class="content-view">
+                <!-- KPI Stats Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card" id="card-total-open">
+                        <div class="kpi-label">Total Open Items</div>
+                        <div class="kpi-value" id="kpi-total-open">-</div>
+                        <div class="kpi-desc">Across all your authorized teams</div>
+                    </div>
+                    <div class="kpi-card" id="card-assigned-me">
+                        <div class="kpi-label">Assigned to Me</div>
+                        <div class="kpi-value" id="kpi-assigned-me">-</div>
+                        <div class="kpi-desc">Active items requiring your action</div>
+                    </div>
+                    <div class="kpi-card highlight-urgent" id="card-unassigned-urgent">
+                        <div class="kpi-label">Unassigned Urgent</div>
+                        <div class="kpi-value" id="kpi-unassigned-urgent">-</div>
+                        <div class="kpi-desc">Requires immediate team claim</div>
+                    </div>
+                    <div class="kpi-card highlight-approval" id="card-awaiting-approval">
+                        <div class="kpi-label">Awaiting My Approval</div>
+                        <div class="kpi-value" id="kpi-awaiting-approval">-</div>
+                        <div class="kpi-desc">Requires Lead or Admin sign-off</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity & Recent Items -->
+                <div class="dashboard-sections-grid">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Recently Updated Work Items</h3>
+                            <button type="button" class="btn btn-link btn-sm" id="btn-view-all-from-dash">View All</button>
+                        </div>
+                        <div class="panel-body p-0">
+                            <div class="table-container">
+                                <table class="data-table" id="dashboard-recent-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th>Priority</th>
+                                            <th>Status</th>
+                                            <th>Team</th>
+                                            <th>Assignee</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dashboard-recent-tbody">
+                                        <tr><td colspan="6" class="text-center text-muted">Loading recent items...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: Work Items Table -->
+            <section id="view-items" class="content-view hidden">
+                <!-- Filters Toolbar -->
+                <div class="panel mb-4">
+                    <div class="filters-bar">
+                        <div class="filter-group flex-1">
+                            <label for="filter-search" class="filter-label">Search</label>
+                            <input type="text" id="filter-search" placeholder="Search title or description..." class="form-input">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-status" class="filter-label">Status</label>
+                            <select id="filter-status" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option value="OPEN">Open</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="AWAITING_APPROVAL">Awaiting Approval</option>
+                                <option value="RESOLVED">Resolved</option>
+                                <option value="CLOSED">Closed</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-priority" class="filter-label">Priority</label>
+                            <select id="filter-priority" class="form-select">
+                                <option value="">All Priorities</option>
+                                <option value="URGENT">Urgent</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-type" class="filter-label">Type</label>
+                            <select id="filter-type" class="form-select">
+                                <option value="">All Types</option>
+                                <option value="INCIDENT">Incident</option>
+                                <option value="CUSTOMER_ISSUE">Customer Issue</option>
+                                <option value="PAYMENT">Payment</option>
+                                <option value="COMPLIANCE">Compliance</option>
+                                <option value="TASK">Task</option>
+                            </select>
+                        </div>
+                        <div class="filter-actions">
+                            <button type="button" id="btn-apply-filters" class="btn btn-secondary">Filter</button>
+                            <button type="button" id="btn-clear-filters" class="btn btn-link">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Work Items Table -->
+                <div class="panel">
+                    <div class="table-container">
+                        <table class="data-table" id="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Team</th>
+                                    <th>Assignee</th>
+                                    <th>Due Date</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-tbody">
+                                <tr><td colspan="8" class="text-center text-muted">Loading items...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Server-Side Pagination Bar -->
+                    <div class="pagination-bar" id="items-pagination">
+                        <div class="pagination-info" id="pagination-info">Showing 0 of 0 items</div>
+                        <div class="pagination-controls">
+                            <button type="button" id="btn-prev-page" class="btn btn-outline btn-sm" disabled>Previous</button>
+                            <span class="page-current" id="page-current-indicator">Page 1 of 1</span>
+                            <button type="button" id="btn-next-page" class="btn btn-outline btn-sm" disabled>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Create Work Item -->
+    <div id="modal-create" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-create-title" class="modal-title">Create Work Item</h3>
+                <button type="button" class="btn-close-modal" id="btn-close-create-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <form id="form-create-item" novalidate>
+                <div class="modal-body">
+                    <div id="create-item-error" class="alert alert-danger hidden"></div>
+
+                    <div class="form-group">
+                        <label for="create-title">Title <span class="required">*</span></label>
+                        <input type="text" id="create-title" name="title" required maxlength="255" class="form-input" placeholder="e.g. Ingress SSL certificate expiring">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="create-team">Team <span class="required">*</span></label>
+                            <select id="create-team" name="teamId" required class="form-select">
+                                <option value="">Select Team</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="create-type">Type <span class="required">*</span></label>
+                            <select id="create-type" name="type" required class="form-select">
+                                <option value="INCIDENT">Incident</option>
+                                <option value="CUSTOMER_ISSUE">Customer Issue</option>
+                                <option value="PAYMENT">Payment</option>
+                                <option value="COMPLIANCE">Compliance</option>
+                                <option value="TASK">Task</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="create-priority">Priority <span class="required">*</span></label>
+                            <select id="create-priority" name="priority" required class="form-select">
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM" selected>Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="create-assignee">Assignee (Optional)</label>
+                            <select id="create-assignee" name="assigneeId" class="form-select">
+                                <option value="">Unassigned</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create-due-date">Due Date (Optional)</label>
+                        <input type="datetime-local" id="create-due-date" name="dueDate" class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create-description">Description</label>
+                        <textarea id="create-description" name="description" rows="4" class="form-textarea" placeholder="Detailed technical description, reproduction steps, or context..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" id="btn-cancel-create">Cancel</button>
+                    <button type="submit" id="btn-submit-create" class="btn btn-primary">
+                        <span class="btn-text">Create Item</span>
+                        <span class="btn-spinner hidden">Submitting...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Work Item Detail & Actions -->
+    <div id="modal-detail" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-header-meta">
+                    <span class="badge" id="detail-type-badge">TYPE</span>
+                    <span class="badge" id="detail-priority-badge">PRIORITY</span>
+                    <span class="badge" id="detail-status-badge">STATUS</span>
+                    <span class="item-version-tag">Version: <span id="detail-version">0</span></span>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-close-detail-modal" aria-label="Close modal">&times;</button>
+            </div>
+
+            <!-- Stale Update Warning Alert -->
+            <div id="detail-conflict-alert" class="alert alert-warning hidden">
+                <div class="alert-content">
+                    <strong>Version Conflict (HTTP 409):</strong>
+                    <span id="detail-conflict-msg">This item has changed since you opened it. Reload the latest version before editing.</span>
+                </div>
+                <button type="button" id="btn-reload-latest" class="btn btn-sm btn-secondary">Reload Latest</button>
+            </div>
+
+            <div class="modal-body modal-scrollable">
+                <!-- Item Title and Description -->
+                <div class="detail-header-section">
+                    <h2 id="detail-title" class="detail-title">Work Item Title</h2>
+                    <p id="detail-description" class="detail-description">Description text...</p>
+                </div>
+
+                <!-- Attributes Grid -->
+                <div class="detail-attributes-grid">
+                    <div class="attr-box">
+                        <span class="attr-label">Team</span>
+                        <span class="attr-value" id="detail-team">-</span>
+                    </div>
+                    <div class="attr-box">
+                        <span class="attr-label">Assignee</span>
+                        <span class="attr-value" id="detail-assignee">Unassigned</span>
+                    </div>
+                    <div class="attr-box">
+                        <span class="attr-label">Created By</span>
+                        <span class="attr-value" id="detail-created-by">-</span>
+                    </div>
+                    <div class="attr-box">
+                        <span class="attr-label">Due Date</span>
+                        <span class="attr-value" id="detail-due-date">-</span>
+                    </div>
+                    <div class="attr-box">
+                        <span class="attr-label">Created At</span>
+                        <span class="attr-value" id="detail-created-at">-</span>
+                    </div>
+                    <div class="attr-box">
+                        <span class="attr-label">Updated At</span>
+                        <span class="attr-value" id="detail-updated-at">-</span>
+                    </div>
+                </div>
+
+                <!-- Operational Action Bar -->
+                <div class="operational-actions-bar">
+                    <div class="action-group" id="action-claim-group">
+                        <button type="button" id="btn-detail-claim" class="btn btn-secondary">
+                            ⚡ Claim Item
+                        </button>
+                    </div>
+
+                    <div class="action-group" id="action-assign-group">
+                        <select id="select-assign-member" class="form-select select-sm">
+                            <option value="">Select Assignee...</option>
+                        </select>
+                        <button type="button" id="btn-detail-assign" class="btn btn-outline btn-sm">Assign</button>
+                    </div>
+
+                    <div class="action-group" id="action-transitions-group">
+                        <span class="action-group-label">Workflow Actions:</span>
+                        <div id="transition-buttons-container" class="transition-buttons">
+                            <!-- Dynamic transition buttons -->
+                        </div>
+                    </div>
+
+                    <button type="button" id="btn-detail-edit-toggle" class="btn btn-outline btn-sm">
+                        ✏️ Edit Details
+                    </button>
+                </div>
+
+                <!-- Edit Form (Toggled) -->
+                <form id="form-edit-item" class="edit-panel hidden">
+                    <h4 class="edit-panel-title">Edit Work Item Details</h4>
+                    <div class="form-group">
+                        <label for="edit-title">Title</label>
+                        <input type="text" id="edit-title" class="form-input">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="edit-priority">Priority</label>
+                            <select id="edit-priority" class="form-select">
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="edit-due-date">Due Date</label>
+                            <input type="datetime-local" id="edit-due-date" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-description">Description</label>
+                        <textarea id="edit-description" rows="3" class="form-textarea"></textarea>
+                    </div>
+                    <div class="edit-actions">
+                        <button type="button" id="btn-cancel-edit" class="btn btn-outline btn-sm">Cancel</button>
+                        <button type="submit" id="btn-save-edit" class="btn btn-primary btn-sm">Save Changes</button>
+                    </div>
+                </form>
+
+                <!-- Tabs: Activity Timeline & Discussion -->
+                <div class="detail-tabs">
+                    <button type="button" class="tab-button active" data-tab="timeline">Activity Timeline</button>
+                    <button type="button" class="tab-button" data-tab="comments">Discussion & Comments (<span id="comments-count">0</span>)</button>
+                </div>
+
+                <!-- Tab Panel: Timeline -->
+                <div id="tab-panel-timeline" class="tab-panel">
+                    <div class="timeline" id="detail-timeline-list">
+                        <div class="text-muted">Loading timeline...</div>
+                    </div>
+                </div>
+
+                <!-- Tab Panel: Comments -->
+                <div id="tab-panel-comments" class="tab-panel hidden">
+                    <div class="comments-list" id="detail-comments-list">
+                        <div class="text-muted">No comments yet.</div>
+                    </div>
+
+                    <!-- Add Comment Box -->
+                    <form id="form-add-comment" class="add-comment-box">
+                        <label for="comment-input" class="sr-only">Add a comment</label>
+                        <textarea id="comment-input" required rows="2" maxlength="2000" class="form-textarea" placeholder="Add a comment or operational update..."></textarea>
+                        <div class="comment-submit-row">
+                            <button type="submit" id="btn-submit-comment" class="btn btn-primary btn-sm">Post Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="/js/app.js"></script>
+</body>
+</html>
